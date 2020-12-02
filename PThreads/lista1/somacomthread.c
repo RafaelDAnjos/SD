@@ -69,7 +69,7 @@ int main( int argc, char *argv[ ]){
     for(i = 0; i<num_threads;i++){
         error_thread = pthread_create(&pacotes[i].thread_id,NULL,threadSomaVetor,&(pacotes[i]));
         if(error_thread!=0){
-            printf("\n------------------Deu erro aqui garai-------------\n");
+            
 
         }
     }
@@ -79,7 +79,7 @@ int main( int argc, char *argv[ ]){
         error_thread  = pthread_join(pacotes[i].thread_id,&s);
         somatotal+= (long long)s;
         if(error_thread!=0){
-            printf("\n------------------Deu pau na recepcao-------------\n");
+            
 
         }
 
