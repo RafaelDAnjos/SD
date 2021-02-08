@@ -108,13 +108,12 @@ void devolver_garfo(void* arg0, void* arg1){
 void* thread_filosofo(void* arg){
     pacotao_info* pacotao = (pacotao_info*)arg;
     
-    
     while(1){
         pensar((void*)pacotao->pacote);
         pegar_garfo((void*)pacotao->pacote);
         comer((void*)pacotao->pacote);
         devolver_garfo((void*)pacotao->pacotes,(void*)pacotao->pacote);
-        i++;
+       
 }
     return NULL;
 }
