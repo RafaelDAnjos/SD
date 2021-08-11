@@ -12,8 +12,8 @@ typedef struct thread_info{
     int fim;
     int* vet;
     int numthread;
-    sem_t* semaphore_count;
-    sem_t* semphore_barrier;
+    pthread_mutex_t * mutex;
+    pthread_cond_t * condicional;
     int* thread_counter;
     int* tempo_thread;
     
@@ -36,26 +36,26 @@ void * threadSomaVetor(void* args){
     thread_info* pacote = args;
     long long soma = 0;
     long long i;
-    
-    sem_wait(pacote->semaphore_count);
-    if(*(pacote->thread_counter) == pacote->numthread-1){
+#ifndef BARRIER
+#define BARRIER
+    pthread_mutex_lock(pacote->mutex);
+    (*pacote->thread_counter)++;
+    if(*(pacote->thread_counter) == pacote->numthread){
     
         *(pacote->thread_counter) = 0;
         *(pacote->tempo_thread) = clock();
-        sem_post(pacote->semaphore_count);
-        for(i=0;i<pacote->numthread-1;i++){
-            sem_post(pacote->semphore_barrier);
-        }
+        pthread_cond_broadcast(pacote->condicional);
     
     }
     else{
-        
-        (*pacote->thread_counter)++;
-        
-        sem_post(pacote->semaphore_count);
-        sem_wait(pacote->semphore_barrier);
+
+        while(pthread_cond_wait(pacote->condicional,pacote->mutex)!=0);
+
     }
-    
+
+    pthread_mutex_unlock(pacote->mutex);
+#endif
+
     for( i=pacote->inicio;i<pacote->fim;i++){
         soma += pacote->vet[i];
         
@@ -68,7 +68,7 @@ void * threadSomaVetor(void* args){
 int main( int argc, char *argv[ ]){
     long long tamvet = atoi(argv[1]);
     int num_threads = atoi(argv[2]);
-    int error_thread;
+    
     
     int thread_counter = 0;
     
@@ -80,9 +80,12 @@ int main( int argc, char *argv[ ]){
     void* s;
     long long somatotal = 0;
     int* vet = (int*)malloc(tamvet*sizeof(int));
-    sem_t semaforo_count,semaforo_barrier;
-    sem_init(&semaforo_count,0,1);
-    sem_init(&semaforo_barrier,0,0);
+    pthread_mutex_t mutex;
+    pthread_cond_t condicional;
+    pthread_mutex_init(&mutex,NULL);
+    pthread_cond_init(&condicional,NULL);
+
+
 
 
     geraVetor(vet,tamvet);
@@ -90,8 +93,8 @@ int main( int argc, char *argv[ ]){
         pacotes[i].id_thread = i;
         pacotes[i].inicio = bloco*i;
         pacotes[i].numthread = num_threads;
-        pacotes[i].semaphore_count = &semaforo_count;
-        pacotes[i].semphore_barrier = &semaforo_barrier;
+        pacotes[i].mutex = &mutex;
+        pacotes[i].condicional = &condicional;
         pacotes[i].thread_counter = &thread_counter;
         pacotes[i].tempo_thread = &tempo;
         
@@ -109,15 +112,15 @@ int main( int argc, char *argv[ ]){
 
     
     for(i = 0; i<num_threads;i++){
-        error_thread = pthread_create(&pacotes[i].thread_id,NULL,threadSomaVetor,&(pacotes[i]));
-       /* if(error_thread!=0){
+        pthread_create(&pacotes[i].thread_id,NULL,threadSomaVetor,&(pacotes[i]));
+        /* if(error_thread!=0){
             printf("\n------------------Deu erro aqui garai-------------\n");
 
         }*/
     }
 
     for (i=0;i<num_threads;i++){
-        error_thread  = pthread_join(pacotes[i].thread_id,&s);
+        pthread_join(pacotes[i].thread_id,&s);
         somatotal+= (long long)s;
         /*if(error_thread!=0){
             printf("\n------------------Deu pau na recepcao-------------\n");
@@ -127,7 +130,12 @@ int main( int argc, char *argv[ ]){
     }
     tempo = clock() - tempo;
 
-    printf("\n%d\nsoma:%d",tempo,somatotal);
+    printf("\n%d\nsoma: %lld",tempo,somatotal);
+
+    pthread_mutex_destroy(mutex);
+    pthread_cond_destroy(condicional);
+    free(vet);
+    free(pacotes);
 
 
 
